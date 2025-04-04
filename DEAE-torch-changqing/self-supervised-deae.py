@@ -16,12 +16,12 @@ from deae_self import VIME_Self
 # from vime_self_att import VIME_Self
 
 def set_seed(seed):
-    """设置随机种子以确保可重复性"""
-    torch.manual_seed(seed)  # 为CPU设置随机种子
-    np.random.seed(seed)  # Numpy模块的随机种子
-    random.seed(seed)  # Python内置的随机模块
-    torch.backends.cudnn.deterministic = True  # 确保每次返回的卷积算法是确定的
-    torch.backends.cudnn.benchmark = False  # 如果网络输入数据维度或类型上变化不大，设置True可能会增加运行效率
+    """Set random seed for reproducibility"""
+    torch.manual_seed(seed)  # Set random seed for CPU
+    np.random.seed(seed)  # Set random seed for NumPy module
+    random.seed(seed)  # Set random seed for Python built-in random module
+    torch.backends.cudnn.deterministic = True  # Ensure the convolution algorithm returned each time is deterministic
+    torch.backends.cudnn.benchmark = False  # If the network input data dimension or type doesn't change much, setting True may increase running efficiency
 
 model_sets = []
 
@@ -63,12 +63,12 @@ if not os.path.exists('save_model'):
 
 torch.save(vime_self_model.encoder.state_dict(), file_name)
 
-# 首先创建一个与保存的编码器结构相同的新编码器实例
-encoder = VIME_Self(dim, alpha).encoder  # 假设 dim 和 alpha 已经定义
+# First, create a new encoder instance with the same structure as the saved encoder
+encoder = VIME_Self(dim, alpha).encoder  # Assume dim and alpha are already defined
 
 # MLP
 input_dim = x_train.shape[1]
-hidden_dim = 64  # 示例隐藏层维度
+hidden_dim = 64  # Example hidden layer dimension
 unique_labels = np.unique(y_train)
 output_dim = len(unique_labels)
 activation_fn = 'relu'
@@ -82,9 +82,9 @@ mlp_parameters = {
     'lr': 0.01,
 }
 
-# 加载保存的 state_dict
+# Load the saved state_dict
 encoder.load_state_dict(torch.load(file_name))
-encoder.eval()  # 切换到评估模式
+encoder.eval()  # Switch to evaluation mode
 
 with torch.no_grad():
     x_train_hat = encoder(x_train)
@@ -96,19 +96,19 @@ train_mlp_pytorch(x_train_hat, y_train, model, mlp_parameters)
 y_test_hat = predict_mlp_pytorch(x_test_hat, model)
 
 y_test_hat = np.argmax(y_test_hat, axis=1)
-# 计算准确率
+# Calculate accuracy
 accuracy = accuracy_score(y_test, y_test_hat)
-# 计算精确率
+# Calculate precision
 precision = precision_score(y_test, y_test_hat, average='weighted')
-# 计算召回率
+# Calculate recall
 recall = recall_score(y_test, y_test_hat, average='weighted')
-# 计算 F1 分数
+# Calculate F1 score
 f1_score_value = f1_score(y_test, y_test_hat, average='weighted')
 
-print(f'准确率：{accuracy:.4f}')
-print(f'精确率：{precision:.4f}')
-print(f'召回率：{recall:.4f}')
-print(f'F1 分数：{f1_score_value:.4f}')
+print(f'Accuracy: {accuracy:.4f}')
+print(f'Precision: {precision:.4f}')
+print(f'Recall: {recall:.4f}')
+print(f'F1 Score: {f1_score_value:.4f}')
 
 report = classification_report(y_test, y_test_hat)
 print(report)

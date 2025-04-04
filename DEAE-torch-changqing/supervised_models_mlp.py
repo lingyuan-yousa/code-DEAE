@@ -35,14 +35,14 @@ def train_mlp_pytorch(x_train, y_train, model, parameters, x_test=0, y_test=0):
     if len(y_train.shape) > 1:
         y_train = convert_matrix_to_vector(y_train)
 
-    # 创建数据加载器
+    # Create a data loader
     train_dataset = TensorDataset(x_train, y_train)
     train_loader = DataLoader(dataset=train_dataset, batch_size=parameters['batch_size'], shuffle=False)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=parameters['lr'], weight_decay=5e-6)
 
-    # 训练模型
+    # Train the model
     model.train()
     for epoch in range(parameters['epochs']):
 
@@ -52,8 +52,6 @@ def train_mlp_pytorch(x_train, y_train, model, parameters, x_test=0, y_test=0):
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-
-
 
         # y_test_hat = predict_mlp_pytorch(x_test, model)
         # acc = perf_metric("acc", y_test, y_test_hat)

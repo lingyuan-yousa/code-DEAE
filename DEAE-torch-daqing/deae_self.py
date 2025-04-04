@@ -15,27 +15,27 @@ class VIME_Self(nn.Module):
         super(VIME_Self, self).__init__()
         # Encoder
         # self.encoder = nn.Sequential(
-        #     nn.Linear(dim, 128),  # 扩大到2倍的维度，提供更多的模型容量
+        #     nn.Linear(dim, 128),  # Expand to twice the dimension to provide more model capacity
         #     nn.LeakyReLU(),
-        #     nn.Linear(128, 64),  # 添加额外的隐藏层
+        #     nn.Linear(128, 64),  # Add an additional hidden layer
         #     nn.LeakyReLU(),
-        #     nn.Linear(64, dim),  # 最后一个线性层将维度降回原始维度
+        #     nn.Linear(64, dim),  # The last linear layer reduces the dimension back to the original dimension
         #     nn.LeakyReLU()
         # )
 
         self.encoder = nn.Sequential(
-            nn.Linear(dim, dim),  # 最后一个线性层将维度降回原始维度
+            nn.Linear(dim, dim),  # The last linear layer reduces the dimension back to the original dimension
             nn.LeakyReLU()
         )
 
         # Mask estimator
         self.mask_estimator = nn.Sequential(
-            nn.Linear(dim, 128),  # 第一个隐藏层，dim为输入维度，128为该层的输出维度
-            nn.ReLU(),  # 第一个隐藏层的ReLU激活函数
-            nn.Linear(128, 64),  # 第二个隐藏层，128为输入维度，64为该层的输出维度
-            nn.ReLU(),  # 第二个隐藏层的ReLU激活函数
-            nn.Linear(64, dim),  # 输出层，64为输入维度，dim为输出维度，保持与原模型输出尺寸一致
-            nn.Sigmoid()  # 输出层的Sigmoid激活函数，用于二分类概率预测
+            nn.Linear(dim, 128),  # The first hidden layer, with dim as the input dimension and 128 as the output dimension of this layer
+            nn.ReLU(),  # ReLU activation function for the first hidden layer
+            nn.Linear(128, 64),  # The second hidden layer, with 128 as the input dimension and 64 as the output dimension of this layer
+            nn.ReLU(),  # ReLU activation function for the second hidden layer
+            nn.Linear(64, dim),  # Output layer, with 64 as the input dimension and dim as the output dimension, keeping the same output size as the original model
+            nn.Sigmoid()  # Sigmoid activation function for the output layer, used for binary classification probability prediction
         )
 
         # Feature estimator
@@ -45,12 +45,12 @@ class VIME_Self(nn.Module):
         # )
 
         self.feature_estimator = nn.Sequential(
-            nn.Linear(dim, 128),  # 第一个隐藏层，dim为输入维度，128为该层的输出维度
-            nn.ReLU(),  # 第一个隐藏层的ReLU激活函数
-            nn.Linear(128, 64),  # 第二个隐藏层，128为输入维度，64为该层的输出维度
-            nn.ReLU(),  # 第二个隐藏层的ReLU激活函数
-            nn.Linear(64, dim),  # 输出层，64为输入维度，dim为输出维度，保持与原模型输出尺寸一致
-            nn.Sigmoid()  # 输出层的Sigmoid激活函数，用于二分类概率预测
+            nn.Linear(dim, 128),  # The first hidden layer, with dim as the input dimension and 128 as the output dimension of this layer
+            nn.ReLU(),  # ReLU activation function for the first hidden layer
+            nn.Linear(128, 64),  # The second hidden layer, with 128 as the input dimension and 64 as the output dimension of this layer
+            nn.ReLU(),  # ReLU activation function for the second hidden layer
+            nn.Linear(64, dim),  # Output layer, with 64 as the input dimension and dim as the output dimension, keeping the same output size as the original model
+            nn.Sigmoid()  # Sigmoid activation function for the output layer, used for binary classification probability prediction
         )
 
         self.alpha = alpha
@@ -64,8 +64,7 @@ class VIME_Self(nn.Module):
         return mask_output, feature_output
 
     def train_model(self, x_unlab, p_m, parameters, x_train, y_train, x_test, y_test, seed):
-
-        # 创建TensorDataset和DataLoader
+        # Create TensorDataset and DataLoader
         dataset = TensorDataset(x_unlab, x_unlab)
         batch_size = parameters['batch_size']
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -80,35 +79,34 @@ class VIME_Self(nn.Module):
             total_loss = 0
             total_mask_loss = 0
             total_feature_loss = 0
-            for xu_batch, _ in dataloader:  # xu_batch 直接从 DataLoader 中获取
+            for xu_batch, _ in dataloader:  # xu_batch is directly obtained from the DataLoader
 
                 optimizer.zero_grad()
 
-                # 根据自己的情况调整mask_generator和pretext_generator的使用
+                # Adjust the use of mask_generator and pretext_generator according to your own situation
                 m_unlab = mask_generator(p_m, xu_batch)
                 m_label, x_tilde = pretext_generator(m_unlab, xu_batch)
 
-                # 前向传播
+                # Forward propagation
                 mask_pred, feature_pred = self.forward(x_tilde)
 
-                # 计算损失
+                # Calculate loss
                 loss_mask = criterion_mask(mask_pred, m_label)
-                loss_feature = criterion_feature(feature_pred, xu_batch)  # 确保feature_pred和x_tilde尺寸一致
+                loss_feature = criterion_feature(feature_pred, xu_batch)  # Ensure feature_pred and x_tilde have the same dimensions
                 loss = loss_mask + self.alpha * loss_feature
 
-                # 反向传播和优化
+                # Backward propagation and optimization
                 loss.backward()
                 optimizer.step()
 
-                # 累计损失
+                # Accumulate loss
                 total_loss += loss.item()
                 total_mask_loss += loss_mask.item()
                 total_feature_loss += loss_feature.item()
 
-
             # MLP
             input_dim = x_train.shape[1]
-            hidden_dim = 64  # 示例隐藏层维度
+            hidden_dim = 64  # Example hidden layer dimension
             unique_labels = np.unique(y_train)
             output_dim = len(unique_labels)
             activation_fn = 'relu'
@@ -122,7 +120,7 @@ class VIME_Self(nn.Module):
                 'lr': 0.002,
             }
 
-            self.encoder.eval()  # 切换到评估模式
+            self.encoder.eval()  # Switch to evaluation mode
 
             with torch.no_grad():
                 x_train_hat1 = self.encoder(x_train)
@@ -135,14 +133,13 @@ class VIME_Self(nn.Module):
 
             print('VIME-Self Performance: ' + str(acc))
 
-            # 每个epoch结束后打印损失
-            print(
-                f'Epoch {epoch + 1}/{epochs}, Total Loss: {total_loss:.4f}, Mask Loss: {total_mask_loss:.4f}, Feature Loss: {total_feature_loss:.4f}')
+            # Print the loss after each epoch
+            print(f'Epoch {epoch + 1}/{epochs}, Total Loss: {total_loss:.4f}, Mask Loss: {total_mask_loss:.4f}, Feature Loss: {total_feature_loss:.4f}')
 
     def set_seed(self, seed):
-        """设置随机种子以确保可重复性"""
-        torch.manual_seed(seed)  # 为CPU设置随机种子
-        np.random.seed(seed)  # Numpy模块的随机种子
-        random.seed(seed)  # Python内置的随机模块
-        torch.backends.cudnn.deterministic = True  # 确保每次返回的卷积算法是确定的
-        torch.backends.cudnn.benchmark = False  # 如果网络输入数据维度或类型上变化不大，设置True可能会增加运行效率
+        """Set random seed for reproducibility"""
+        torch.manual_seed(seed)  # Set random seed for CPU
+        np.random.seed(seed)  # Set random seed for NumPy module
+        random.seed(seed)  # Set random seed for Python built-in random module
+        torch.backends.cudnn.deterministic = True  # Ensure the convolution algorithm returned each time is deterministic
+        torch.backends.cudnn.benchmark = False  # If the network input data dimension or type doesn't change much, setting True may increase running efficiency        torch.backends.cudnn.benchmark = False  # 如果网络输入数据维度或类型上变化不大，设置True可能会增加运行效率

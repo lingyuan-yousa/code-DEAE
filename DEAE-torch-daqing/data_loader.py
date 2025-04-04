@@ -10,25 +10,25 @@ from sklearn import preprocessing
 def load_mnist_data(label_data_rate):
 
     seed = 37
-    # 设置随机种子
+    # Set random seed
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
 
-    df = pd.read_csv('../daqing.csv', encoding='gbk')  # 或使用你知道的正确编码
+    df = pd.read_csv('../data/daqing.csv', encoding='gbk')  # Or use the correct encoding you know
     max_min = preprocessing.StandardScaler()
 
-    # 分割训练集和测试集
-    df_train = df[~df['Well_Name'].str.contains('乐')]
-    df_test = df[df['Well_Name'].str.contains('乐')]
+    # Split the dataset into training and test sets
+    df_train = df[~df['Well_Name'].str.contains('Le')]
+    df_test = df[df['Well_Name'].str.contains('Le')]
 
-    # 选择特定列作为特征
+    # Select specific columns as features
     x_train = df_train.iloc[:, 3:16]
     x_train = max_min.fit_transform(x_train)
     y_train = df_train['LITH']
 
     x_test = df_test.iloc[:, 3:16]
-    x_test = max_min.transform(x_test)  # 应使用相同的scaler对象来转换测试数据
+    x_test = max_min.transform(x_test)  # Use the same scaler object to transform test data
     y_test = df_test['LITH']
 
     x_train = torch.tensor(x_train, dtype=torch.float32)
