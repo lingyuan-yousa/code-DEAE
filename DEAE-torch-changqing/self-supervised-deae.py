@@ -12,8 +12,8 @@ warnings.filterwarnings("ignore")
 
 from data_loader import load_mnist_data
 from supervised_models_mlp import MLP, train_mlp_pytorch, predict_mlp_pytorch
-from deae_self import VIME_Self
-# from vime_self_att import VIME_Self
+from deae_self import DADE_Self
+# from DADE_Self_att import DADE_Self
 
 def set_seed(seed):
     """Set random seed for reproducibility"""
@@ -40,10 +40,10 @@ results = np.zeros([len(model_sets) + 2])
 
 x_train, y_train, x_unlab, x_test, y_test = load_mnist_data(label_data_rate)
 
-# Train VIME-Self
-vime_self_parameters = dict()
-vime_self_parameters['batch_size'] = 64
-vime_self_parameters['epochs'] = 25
+# Train DADE-Self
+DADE_Self_parameters = dict()
+DADE_Self_parameters['batch_size'] = 64
+DADE_Self_parameters['epochs'] = 25
 
 file_name = './save_model/encoder_model'
 
@@ -54,17 +54,17 @@ seed = 18 #41
 
 set_seed(seed)
 _, dim = x_unlab.shape
-vime_self_model = VIME_Self(dim, alpha)
-vime_self_model.train_model(x_unlab, p_m, vime_self_parameters, x_train, y_train, x_test, y_test, seed)
+DADE_Self_model = DADE_Self(dim, alpha)
+DADE_Self_model.train_model(x_unlab, p_m, DADE_Self_parameters, x_train, y_train, x_test, y_test, seed)
 
 # Save encoder
 if not os.path.exists('save_model'):
     os.makedirs('save_model')
 
-torch.save(vime_self_model.encoder.state_dict(), file_name)
+torch.save(DADE_Self_model.encoder.state_dict(), file_name)
 
 # First, create a new encoder instance with the same structure as the saved encoder
-encoder = VIME_Self(dim, alpha).encoder  # Assume dim and alpha are already defined
+encoder = DADE_Self(dim, alpha).encoder  # Assume dim and alpha are already defined
 
 # MLP
 input_dim = x_train.shape[1]

@@ -1,21 +1,18 @@
 import random
 
 import numpy as np
-import os
 import warnings
 
 import torch
+from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
 
 warnings.filterwarnings("ignore")
 
-from comparative_experiments_changqing.data_loader import load_mnist_data
+from data_loader import load_mnist_data
 from supervised_models_mlp import MLP, train_mlp_pytorch, predict_mlp_pytorch
-
-from RDAE_encoder import RecurrentDenoisingAutoencoder
-
+from deae_self import DADE_Self
+from deae_semi import train_model
 from deae_utils import perf_metric
-from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
-
 
 def set_seed(seed):
     """Set random seed for reproducibility"""
@@ -23,7 +20,7 @@ def set_seed(seed):
     np.random.seed(seed)  # Set random seed for NumPy module
     random.seed(seed)  # Set random seed for Python built-in random module
     torch.backends.cudnn.deterministic = True  # Ensure the convolution algorithm returned each time is deterministic
-    torch.backends.cudnn.benchmark = False  # If the network input data dimension or type doesn't change much, setting True may increase running efficiency
+    torch.backends.cudnn.benchmark = False  # If the network input data dimension or type doesn't change much, setting True may increase runtime efficiency
 
 model_sets = []
 
@@ -31,42 +28,20 @@ model_sets = []
 p_m = 0.3
 alpha = 2
 K = 3
-beta = 0.1
+# beta = 0.1
+beta = 0
 label_data_rate = 0.3
-
 # Metric
 metric = 'acc'
 
 # Define output
 results = np.zeros([len(model_sets) + 2])
-
 x_train, y_train, x_unlab, x_test, y_test = load_mnist_data(label_data_rate)
-
-# Train DADE-Self
-DADE_Self_parameters = dict()
-DADE_Self_parameters['batch_size'] = 64
-DADE_Self_parameters['epochs'] = 19
-
 file_name = './save_model/encoder_model'
-
-# for seed in range(1, 30):
-#     print('seed ' + str(seed))
-
-seed = 10 #41
-
-set_seed(seed)
 _, dim = x_unlab.shape
-DAE_model = RecurrentDenoisingAutoencoder(dim)
-DAE_model.train_model(x_unlab, p_m, DADE_Self_parameters, x_train, y_train, x_test, y_test, seed)
-
-# Save encoder
-if not os.path.exists('save_model'):
-    os.makedirs('save_model')
-
-torch.save(DAE_model.encoder.state_dict(), file_name)
 
 # First, create a new encoder instance with the same structure as the saved encoder
-encoder = RecurrentDenoisingAutoencoder(dim).encoder  # Assume dim and alpha are already defined
+encoder = DADE_Self(dim, alpha).encoder  # Assume dim and alpha are already defined
 
 # MLP
 input_dim = x_train.shape[1]
@@ -74,6 +49,8 @@ hidden_dim = 64  # Example hidden layer dimension
 unique_labels = np.unique(y_train)
 output_dim = len(unique_labels)
 activation_fn = 'relu'
+
+seed = 10
 
 set_seed(seed)
 model = MLP(input_dim, hidden_dim, output_dim, activation_fn)
@@ -89,15 +66,33 @@ encoder.load_state_dict(torch.load(file_name))
 encoder.eval()  # Switch to evaluation mode
 
 with torch.no_grad():
-    x_train_hat, (_, _) = encoder(x_train)
-    x_test_hat, (_, _) = encoder(x_test)
-
+    x_train_hat = encoder(x_train)
+    x_test_hat = encoder(x_test)
 
 train_mlp_pytorch(x_train_hat, y_train, model, mlp_parameters)
 y_test_hat = predict_mlp_pytorch(x_test_hat, model)
 
+# train_mlp_pytorch(x_train, y_train, model, mlp_parameters)
+# y_test_hat = predict_mlp_pytorch(x_test, model)
 
-y_test_hat = np.argmax(y_test_hat, axis=1)
+results[0] = perf_metric(metric, y_test, y_test_hat)
+
+print('DADE-Self Performance: ' + str(results[0]))
+
+# Train DADE-Semi
+dade_semi_parameters = dict()
+dade_semi_parameters['hidden_dim'] = 64
+dade_semi_parameters['batch_size'] = 128
+dade_semi_parameters['iterations'] = 200 #32
+dade_semi_parameters['lr'] = 0.002
+
+# for seed in range(20, 50):
+#     print('seed ' + str(seed))
+
+set_seed(14)
+y_test_hat = train_model(encoder, x_train, y_train, x_unlab, x_test, y_test,
+                       dade_semi_parameters, p_m, K, beta)
+
 # Calculate accuracy
 accuracy = accuracy_score(y_test, y_test_hat)
 # Calculate precision
@@ -114,5 +109,3 @@ print(f'F1 Score: {f1_score_value:.4f}')
 
 report = classification_report(y_test, y_test_hat)
 print(report)
-
-

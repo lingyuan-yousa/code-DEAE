@@ -75,21 +75,21 @@ y_test_hat = predict_mlp_pytorch(x_test_hat, model)
 
 results[0] = perf_metric(metric, y_test, y_test_hat)
 
-print('VIME-Self Performance: ' + str(results[0]))
+print('DADE-Self Performance: ' + str(results[0]))
 
-# Train VIME-Semi
-vime_semi_parameters = dict()
-vime_semi_parameters['hidden_dim'] = 128
-vime_semi_parameters['batch_size'] = 128
-vime_semi_parameters['iterations'] = 100
-vime_semi_parameters['lr'] = 0.01
+# Train DADE-Semi
+dade_semi_parameters = dict()
+dade_semi_parameters['hidden_dim'] = 128
+dade_semi_parameters['batch_size'] = 128
+dade_semi_parameters['iterations'] = 100
+dade_semi_parameters['lr'] = 0.01
 
 # for seed in range(20, 50):
 #     print('seed ' + str(seed))
 
 set_seed(14)
 y_test_hat = train_model(encoder, x_train, y_train, x_unlab, x_test, y_test,
-                       vime_semi_parameters, p_m, K, beta)
+                       dade_semi_parameters, p_m, K, beta)
 
 # Calculate accuracy
 accuracy = accuracy_score(y_test, y_test_hat)

@@ -30,9 +30,9 @@ class MultiHeadAttention(nn.Module):
         attn_output = attn_output.squeeze(0)
         return attn_output
 
-class VIME_Self(nn.Module):
+class DADE_Self(nn.Module):
     def __init__(self, dim, alpha, num_heads=4, hid1=64, hid2=64):
-        super(VIME_Self, self).__init__()
+        super(DADE_Self, self).__init__()
 
         self.attention = MultiHeadAttention(embed_dim=hid1, num_heads=num_heads)
 
@@ -141,7 +141,7 @@ class VIME_Self(nn.Module):
 
             acc = perf_metric('acc', y_test, y_test_hat1)
 
-            print('VIME-Self Performance: ' + str(acc))
+            print('DADE-Self Performance: ' + str(acc))
 
             # Print the loss after each epoch
             print(

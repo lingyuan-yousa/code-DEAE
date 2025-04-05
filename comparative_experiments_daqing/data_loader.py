@@ -4,6 +4,7 @@ import random
 import numpy as np
 import pandas as pd
 import torch
+import os
 from sklearn import preprocessing
 
 
@@ -15,8 +16,13 @@ def load_mnist_data(label_data_rate):
     np.random.seed(seed)
     random.seed(seed)
 
-    # df = pd.read_csv('/Users/zhouzihan/PycharmProjects/code-DEAE/data/daqing1.csv', encoding='GBK')  # Or use the correct encoding you know
-    df = pd.read_csv('/Users/zhouzihan/PycharmProjects/code-DEAE/data/daqing.csv', encoding='utf-8-sig')  # Or use the correct encoding you know
+    current_dir = os.path.dirname(os.path.abspath(__file__))  # /code-DEAE/comparative_experiments_daqing/
+
+    project_root = os.path.dirname(current_dir)  # /code-DEAE/
+    data_path = os.path.join(project_root, 'data', 'daqing1.csv')
+
+    df = pd.read_csv(data_path, encoding='utf-8-sig')
+
     max_min = preprocessing.StandardScaler()
 
     # Split the dataset into training and test sets

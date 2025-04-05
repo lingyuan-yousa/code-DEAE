@@ -10,9 +10,9 @@ from supervised_models_mlp import MLP, train_mlp_pytorch, predict_mlp_pytorch
 from deae_utils import mask_generator, pretext_generator
 from deae_utils import perf_metric
 
-class VIME_Self(nn.Module):
+class DADE_Self(nn.Module):
     def __init__(self, dim, alpha):
-        super(VIME_Self, self).__init__()
+        super(DADE_Self, self).__init__()
         # Encoder
         # self.encoder = nn.Sequential(
         #     nn.Linear(dim, 128),  # Expand to twice the dimension to provide more model capacity
@@ -133,7 +133,7 @@ class VIME_Self(nn.Module):
 
             acc = perf_metric('acc', y_test, y_test_hat1)
 
-            print('VIME-Self Performance: ' + str(acc))
+            print('DADE-Self Performance: ' + str(acc))
 
             # Print loss after each epoch
             print(

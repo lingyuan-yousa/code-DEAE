@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
@@ -7,7 +9,13 @@ def load_data(label_data_rate):
     seed = 15
     np.random.seed(seed)
 
-    df = pd.read_csv('changqing.csv', encoding='utf-8')  # Or use the correct encoding you know
+    current_dir = os.path.dirname(
+        os.path.abspath(__file__))  # cur dir：/code-DEAE/comparative_experiments_daqing/Machine Learning Algorithms（ML）/
+
+    project_root = os.path.dirname(os.path.dirname(current_dir))  # /code-DEAE/
+    data_path = os.path.join(project_root, 'data', 'changqing1.csv')
+
+    df = pd.read_csv(data_path, encoding='utf-8-sig')
     max_min = preprocessing.StandardScaler()
 
     df_train, df_test = train_test_split(df, test_size=0.2, random_state=42)

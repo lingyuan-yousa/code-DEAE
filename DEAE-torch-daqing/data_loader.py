@@ -1,4 +1,5 @@
 # Necessary packages
+import os
 import random
 
 import numpy as np
@@ -15,11 +16,16 @@ def load_mnist_data(label_data_rate):
     np.random.seed(seed)
     random.seed(seed)
 
-    df = pd.read_csv('../data/daqing.csv', encoding='gbk')  # Or use the correct encoding you know
+    current_dir = os.path.dirname(os.path.abspath(__file__))  # /code-DEAE/comparative_experiments_daqing/
+
+    project_root = os.path.dirname(current_dir)  # /code-DEAE/
+    data_path = os.path.join(project_root, 'data', 'daqing1.csv')
+
+    df = pd.read_csv(data_path, encoding='utf-8-sig')
     max_min = preprocessing.StandardScaler()
 
     # Split the dataset into training and test sets
-    df_train = df[~df['Well_Name'].str.contains('Le')]
+    df_train = df[~df['Well_Name'].str.contains('le')]
     df_test = df[df['Well_Name'].str.contains('Le')]
 
     # Select specific columns as features
@@ -41,8 +47,14 @@ def load_mnist_data(label_data_rate):
 
     idx = torch.randperm(x_train.size(0))
 
-    label_idx = idx[:int(len(idx) * label_data_rate)]
-    unlab_idx = idx[int(len(idx) * label_data_rate):]
+    # 确保 label_data_rate 在 0 到 1 之间
+    if label_data_rate < 0 or label_data_rate > 1:
+        raise ValueError("label_data_rate must be between 0 and 1")
+
+    # 计算有标签和无标签数据的索引
+    label_size = int(len(idx) * label_data_rate)
+    label_idx = idx[:label_size]
+    unlab_idx = idx[label_size:]
 
     x_label = x_train[label_idx, :]
     y_label = y_train[label_idx]

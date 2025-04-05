@@ -1,4 +1,5 @@
 # Necessary packages
+import os
 import random
 
 import numpy as np
@@ -14,7 +15,12 @@ def load_mnist_data(label_data_rate):
     np.random.seed(seed)
     random.seed(seed)
 
-    df = pd.read_csv('changqing.csv', encoding='utf-8')  # Or use the correct encoding you know
+    current_dir = os.path.dirname(os.path.abspath(__file__))  # /code-DEAE/comparative_experiments_daqing/
+
+    project_root = os.path.dirname(current_dir)  # /code-DEAE/
+    data_path = os.path.join(project_root, 'data', 'changqing1.csv')
+
+    df = pd.read_csv(data_path, encoding='utf-8-sig')
     max_min = preprocessing.StandardScaler()
 
     # Split the dataset into training and test sets

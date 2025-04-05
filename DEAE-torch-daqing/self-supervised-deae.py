@@ -5,17 +5,17 @@ import os
 import warnings
 
 import torch
+from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
+
 
 warnings.filterwarnings("ignore")
 
-from comparative_experiments_changqing.data_loader import load_mnist_data
+from data_loader import load_mnist_data
 from supervised_models_mlp import MLP, train_mlp_pytorch, predict_mlp_pytorch
-
-from RDAE_encoder import RecurrentDenoisingAutoencoder
+# from DADE_Self import DADE_Self
+from deae_self_att import DADE_Self
 
 from deae_utils import perf_metric
-from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
-
 
 def set_seed(seed):
     """Set random seed for reproducibility"""
@@ -32,7 +32,7 @@ p_m = 0.3
 alpha = 2
 K = 3
 beta = 0.1
-label_data_rate = 0.3
+label_data_rate = 0.2 # eopch = 8
 
 # Metric
 metric = 'acc'
@@ -45,7 +45,7 @@ x_train, y_train, x_unlab, x_test, y_test = load_mnist_data(label_data_rate)
 # Train DADE-Self
 DADE_Self_parameters = dict()
 DADE_Self_parameters['batch_size'] = 64
-DADE_Self_parameters['epochs'] = 19
+DADE_Self_parameters['epochs'] = 16
 
 file_name = './save_model/encoder_model'
 
@@ -56,17 +56,17 @@ seed = 10 #41
 
 set_seed(seed)
 _, dim = x_unlab.shape
-DAE_model = RecurrentDenoisingAutoencoder(dim)
-DAE_model.train_model(x_unlab, p_m, DADE_Self_parameters, x_train, y_train, x_test, y_test, seed)
+DADE_Self_model = DADE_Self(dim, alpha)
+DADE_Self_model.train_model(x_unlab, p_m, DADE_Self_parameters, x_train, y_train, x_test, y_test, seed)
 
 # Save encoder
 if not os.path.exists('save_model'):
     os.makedirs('save_model')
 
-torch.save(DAE_model.encoder.state_dict(), file_name)
+torch.save(DADE_Self_model.encoder.state_dict(), file_name)
 
 # First, create a new encoder instance with the same structure as the saved encoder
-encoder = RecurrentDenoisingAutoencoder(dim).encoder  # Assume dim and alpha are already defined
+encoder = DADE_Self(dim, alpha).encoder  # Assume dim and alpha are already defined
 
 # MLP
 input_dim = x_train.shape[1]
@@ -89,13 +89,13 @@ encoder.load_state_dict(torch.load(file_name))
 encoder.eval()  # Switch to evaluation mode
 
 with torch.no_grad():
-    x_train_hat, (_, _) = encoder(x_train)
-    x_test_hat, (_, _) = encoder(x_test)
+    x_train_hat = encoder(x_train)
+    x_test_hat = encoder(x_test)
 
 
+# set_seed(seed)
 train_mlp_pytorch(x_train_hat, y_train, model, mlp_parameters)
 y_test_hat = predict_mlp_pytorch(x_test_hat, model)
-
 
 y_test_hat = np.argmax(y_test_hat, axis=1)
 # Calculate accuracy

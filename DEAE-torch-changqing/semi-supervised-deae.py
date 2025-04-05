@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 from data_loader import load_mnist_data
 from supervised_models_mlp import MLP, train_mlp_pytorch, predict_mlp_pytorch
-from deae_self import VIME_Self
+from deae_self import DADE_Self
 from deae_semi import train_model
 from deae_utils import perf_metric
 
@@ -41,7 +41,7 @@ file_name = './save_model/encoder_model'
 _, dim = x_unlab.shape
 
 # First, create a new encoder instance with the same structure as the saved encoder
-encoder = VIME_Self(dim, alpha).encoder  # Assume dim and alpha are already defined
+encoder = DADE_Self(dim, alpha).encoder  # Assume dim and alpha are already defined
 
 # MLP
 input_dim = x_train.shape[1]
@@ -77,22 +77,22 @@ y_test_hat = predict_mlp_pytorch(x_test_hat, model)
 
 results[0] = perf_metric(metric, y_test, y_test_hat)
 
-print('VIME-Self Performance: ' + str(results[0]))
+print('DADE-Self Performance: ' + str(results[0]))
 
-# Train VIME-Semi
-vime_semi_parameters = dict()
-vime_semi_parameters['hidden_dim'] = 64
-vime_semi_parameters['batch_size'] = 128
-# vime_semi_parameters['iterations'] = 149 # beta = 0.1
-vime_semi_parameters['iterations'] = 109 # beta = 0
-vime_semi_parameters['lr'] = 0.002
+# Train DADE-Semi
+dade_semi_parameters = dict()
+dade_semi_parameters['hidden_dim'] = 64
+dade_semi_parameters['batch_size'] = 128
+# dade_semi_parameters['iterations'] = 149 # beta = 0.1
+dade_semi_parameters['iterations'] = 109 # beta = 0
+dade_semi_parameters['lr'] = 0.002
 
 # for seed in range(20, 50):
 #     print('seed ' + str(seed))
 
 # set_seed(14)
 y_test_hat = train_model(encoder, x_train, y_train, x_unlab, x_test, y_test,
-                       vime_semi_parameters, p_m, K, beta)
+                       dade_semi_parameters, p_m, K, beta)
 
 # Calculate accuracy
 accuracy = accuracy_score(y_test, y_test_hat)

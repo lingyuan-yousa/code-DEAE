@@ -42,10 +42,10 @@ results = np.zeros([len(model_sets) + 2])
 
 x_train, y_train, x_unlab, x_test, y_test = load_mnist_data(label_data_rate)
 
-# Train VIME-Self
-vime_self_parameters = dict()
-vime_self_parameters['batch_size'] = 64
-vime_self_parameters['epochs'] = 19
+# Train DADE-Self
+DADE_Self_parameters = dict()
+DADE_Self_parameters['batch_size'] = 64
+DADE_Self_parameters['epochs'] = 19
 
 file_name = './save_model/encoder_model'
 
@@ -57,7 +57,7 @@ seed = 10 #41
 set_seed(seed)
 _, dim = x_unlab.shape
 DAE_model = RecurrentDenoisingAutoencoder(dim)
-DAE_model.train_model(x_unlab, p_m, vime_self_parameters, x_train, y_train, x_test, y_test, seed)
+DAE_model.train_model(x_unlab, p_m, DADE_Self_parameters, x_train, y_train, x_test, y_test, seed)
 
 # Save encoder
 if not os.path.exists('save_model'):

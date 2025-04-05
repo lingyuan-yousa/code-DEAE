@@ -7,13 +7,12 @@ warnings.filterwarnings("ignore")
 
 from data_loader import load_mnist_data
 from supervised_models_mlp import MLP, train_mlp_pytorch, predict_mlp_pytorch
-from supervised_models_xgboost import xgb_model
 from supervised_models_logit import logit
 
 from deae_utils import perf_metric
 
 # Experimental parameters
-model_sets = ['logit', 'xgboost', 'mlp']
+model_sets = ['logit', 'mlp']
 
 label_data_rate = 1
 
@@ -21,17 +20,13 @@ label_data_rate = 1
 metric = 'acc'
 
 # Define output
-results = np.zeros([len(model_sets) + 2])
+results = np.zeros([len(model_sets) + 1])
 
 x_train, y_train, x_unlab, x_test, y_test = load_mnist_data(label_data_rate)
 
 # Logistic regression
 y_test_hat = logit(x_train, y_train, x_test)
 results[0] = perf_metric(metric, y_test, y_test_hat)
-
-# XGBoost
-y_test_hat = xgb_model(x_train, y_train, x_test)
-results[1] = perf_metric(metric, y_test, y_test_hat)
 
 # for ss in range(1, 100):
 # x_train, y_train, x_unlab, x_test, y_test = load_mnist_data(label_data_rate, ss)
@@ -59,7 +54,7 @@ mlp_parameters = {
 train_mlp_pytorch(x_train, y_train, model, mlp_parameters, x_test, y_test)
 # Make predictions
 y_test_hat = predict_mlp_pytorch(x_test, model)
-results[2] = perf_metric(metric, y_test, y_test_hat)
+results[1] = perf_metric(metric, y_test, y_test_hat)
 
 # Report performance
 for m_it in range(len(model_sets)):
