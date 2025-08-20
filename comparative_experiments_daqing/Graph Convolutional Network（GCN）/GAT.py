@@ -1,3 +1,5 @@
+import os
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,7 +10,12 @@ import pandas as pd
 import numpy as np
 import random
 
-from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
+# Add parent directory to Python path for imports
+parent_dir = os.path.dirname(os.path.dirname(__file__))
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+from evaluation_utils import save_confusion_matrix, print_classification_metrics
 
 
 seed = 4
@@ -17,35 +24,42 @@ np.random.seed(seed)
 random.seed(seed)
 
 # Read data
-train_data = pd.read_csv("E:/well/data/daqing/daqing_train.csv", encoding='utf-8')
-test_data = pd.read_csv("E:/well/data/daqing/daqing_test.csv", encoding='utf-8')
+data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+df = pd.read_csv(os.path.join(data_dir, "daqing1.csv"), encoding='utf-8-sig')
 
-# Extract features and labels
-x = train_data.iloc[:, 3:16].values
+# Split by well name
+df_train = df[~df['Well_Name'].str.contains('Le')]
+df_test = df[df['Well_Name'].str.contains('Le')]
+
+# Extract features and standardize
 max_min_scaler = preprocessing.StandardScaler()
+
+# Process training data
+x = df_train.iloc[:, 3:16].values
 x = max_min_scaler.fit_transform(x)
 x = torch.tensor(x, dtype=torch.float)
 
-test_x = test_data.iloc[:, 3:16].values
-test_x = max_min_scaler.transform(test_x)
-test_x = torch.tensor(test_x, dtype=torch.float)
-
-y = train_data.iloc[:, -1].values - 1
+y = df_train['LITH'].values - 1  # Convert to 0-based indexing
 y = torch.tensor(y, dtype=torch.long)
 
-test_y = test_data.iloc[:, -1].values - 1
+# Process test data
+test_x = df_test.iloc[:, 3:16].values
+test_x = max_min_scaler.transform(test_x)  # Use same scaler as training
+test_x = torch.tensor(test_x, dtype=torch.float)
+
+test_y = df_test['LITH'].values - 1  # Convert to 0-based indexing
 test_y = torch.tensor(test_y, dtype=torch.long)
 
 # Read edges
-path = "E:/well/code/daqing建边/"
+edges_dir = os.path.join(os.path.dirname(__file__), 'edges')
 train_edges = []
-with open(path + "daqing_train_edges_depth_feature.txt", "r") as train_file:
+with open(os.path.join(edges_dir, "daqing_train_edges.txt"), "r") as train_file:
     for line in train_file:
         edge = [int(x) for x in line.strip().split()]
         train_edges.append(edge)
 
 test_edges = []
-with open(path + "daqing_test_edges_depth_feature.txt", "r") as test_file:
+with open(os.path.join(edges_dir, "daqing_test_edges.txt"), "r") as test_file:
     for line in test_file:
         edge = [int(x) for x in line.strip().split()]
         test_edges.append(edge)
@@ -90,7 +104,10 @@ out_features = len(torch.unique(y))
 
 # Initialize the model and optimizer
 model = Net(graph_data.num_features, hid, out_features, heads)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0004, weight_decay=5e-6)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-6)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', 
+                                                      factor=0.5, patience=20, 
+                                                      verbose=True)
 
 # Train the model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -98,7 +115,11 @@ model = model.to(device)
 graph_data = graph_data.to(device)
 test_graph_data = test_graph_data.to(device)
 
-for epoch in range(23):
+best_acc = 0.0
+patience_counter = 0
+max_patience = 50  # Early stopping patience
+
+for epoch in range(200):  # Increased epochs
     model.train()
     optimizer.zero_grad()
 
@@ -117,24 +138,39 @@ for epoch in range(23):
     acc_test = correct / test_graph_data.num_nodes
 
     print(f'Epoch: {epoch+1}, Train Acc: {acc_train:.4f}, Test Acc: {acc_test:.4f}')
+    
+    # Update learning rate scheduler
+    scheduler.step(acc_test)
+    
+    # Early stopping check
+    if acc_test > best_acc:
+        best_acc = acc_test
+        patience_counter = 0
+        # Save best model
+        torch.save(model.state_dict(), os.path.join(os.path.dirname(__file__), 'results', 'best_gat_model.pt'))
+    else:
+        patience_counter += 1
+        if patience_counter >= max_patience:
+            print(f'Early stopping triggered at epoch {epoch+1}')
+            break
+
+# Load best model for final evaluation
+best_model_path = os.path.join(os.path.dirname(__file__), 'results', 'best_gat_model.pt')
+if os.path.exists(best_model_path):
+    model.load_state_dict(torch.load(best_model_path))
+    print("Loaded best model for evaluation")
 
 # Test the model
 model.eval()
 _, pred = model(test_graph_data).max(dim=1)
 
-# Calculate accuracy
-accuracy = accuracy_score(test_y, pred)
+# Convert predictions to numpy for evaluation
+pred_np = pred.cpu().numpy()
+test_y_np = test_y.cpu().numpy()
 
-# Calculate precision
-precision = precision_score(test_y, pred, average='weighted')  # 'macro' considers the balance of all classes
+# Print metrics and save confusion matrix
+metrics = print_classification_metrics(test_y_np, pred_np, 'GAT')
 
-# Calculate recall
-recall = recall_score(test_y, pred, average='weighted')
-
-# Calculate F1 score
-f1 = f1_score(test_y, pred, average='weighted')
-
-print(f"Accuracy: {accuracy:.4f}")
-print(f"Precision: {precision:.4f}")
-print(f"Recall: {recall:.4f}")
-print(f"F1 Score: {f1:.4f}")
+# Save confusion matrix
+output_dir = os.path.join(os.path.dirname(__file__), 'results')
+save_confusion_matrix(test_y_np, pred_np, output_dir, 'gat', normalize='true')

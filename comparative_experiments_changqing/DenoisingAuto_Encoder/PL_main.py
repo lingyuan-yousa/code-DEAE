@@ -13,7 +13,7 @@ from comparative_experiments_changqing.data_loader import load_mnist_data
 from supervised_models_mlp import MLP, train_mlp_pytorch, predict_mlp_pytorch
 from DAE_encoder import DenoisingAutoencoder
 from PL_1DCNN_MLP import train_model
-from deae_utils import perf_metric
+from deae_utils import perf_metric, save_confusion_matrix
 
 def set_seed(seed):
     """Set the random seed to ensure reproducibility"""
@@ -107,3 +107,11 @@ print(f'F1 Score: {f1_score_value:.4f}')
 
 report = classification_report(y_test, y_test_hat)
 print(report)
+
+save_confusion_matrix(
+    y_true=y_test,
+    y_pred=y_test_hat,
+    output_dir='./save_model',
+    labels=sorted(list(np.unique(np.concatenate([y_test, y_test_hat])))),
+    normalize='true'
+)

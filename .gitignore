@@ -1,0 +1,41 @@
+# Data files
+data/daqing1.csv
+data/changqing1.csv
+
+# XML files
+*.xml
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyCharm files
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Model checkpoints and results
+**/save_model/
+**/results/
+
+# Logs
+*.log
+catboost_info/
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

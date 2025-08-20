@@ -1,6 +1,8 @@
 import torch
 import numpy as np
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix
+import os
+import matplotlib.pyplot as plt
 
 def mask_generator (p_m, x):
   mask = np.random.binomial(1, p_m, x.shape)

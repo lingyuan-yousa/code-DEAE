@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore")
 from data_loader import load_mnist_data
 from supervised_models_mlp import MLP, train_mlp_pytorch, predict_mlp_pytorch
 from deae_self import DADE_Self
+from deae_utils import save_confusion_matrix
 # from DADE_Self_att import DADE_Self
 
 def set_seed(seed):
@@ -114,3 +115,11 @@ report = classification_report(y_test, y_test_hat)
 print(report)
 
 
+# Save confusion matrix outputs
+save_confusion_matrix(
+    y_true=y_test,
+    y_pred=y_test_hat,
+    output_dir='./save_model',
+    labels=sorted(list(np.unique(np.concatenate([y_test, y_test_hat])))),
+    normalize='true'
+)
