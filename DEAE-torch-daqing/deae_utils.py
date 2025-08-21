@@ -1,136 +1,125 @@
-import torch
-import numpy as np
-from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix
 import os
+import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import (
+    confusion_matrix, 
+    classification_report,
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score
+)
 
-def mask_generator (p_m, x):
-  mask = np.random.binomial(1, p_m, x.shape)
-  return mask
-
-def pretext_generator (m, x):
-  no, dim = x.shape  
-
-  x_bar = np.zeros([no, dim])
-  for i in range(dim):
-    idx = np.random.permutation(no)
-    x_bar[:, i] = x[idx, i]
-    
-  # Corrupt samples
-  x_tilde = x * (1-m) + x_bar * m  
-  # Define new mask matrix
-  m_new = 1 * (x != x_tilde)
-
-  x_tilde_tensor = torch.tensor(x_tilde, dtype=torch.float32)
-  m_new_tensor = torch.tensor(m_new, dtype=torch.float32)  # Or choose the appropriate data type according to the actual situation
-
-  return m_new_tensor, x_tilde_tensor
-
-#%% 
-def perf_metric (metric, y_test, y_test_hat):
-  if metric == 'acc':
-    predicted_labels = np.argmax(y_test_hat, axis=1)
-    result = accuracy_score(y_test, predicted_labels)
-  elif metric == 'auc':
-    result = roc_auc_score(y_test, y_test_hat[:, 1])
-    
-  return result
-
-#%% 
 def convert_matrix_to_vector(matrix):
-  """Convert a two-dimensional matrix into a one-dimensional vector
+    """Convert a matrix to a vector."""
+    return matrix.reshape(-1)
 
-  Args:
-    - matrix: A two-dimensional matrix
+def convert_vector_to_matrix(vector, shape):
+    """Convert a vector back to a matrix with the specified shape."""
+    return vector.reshape(shape)
 
-  Returns:
-    - vector: A one-dimensional vector
-  """
-  # Parameters
-  no, dim = matrix.shape
-  # Define output  
-  vector = np.zeros([no,])
-  
-  # Convert matrix to vector
-  for i in range(dim):
-    idx = np.where(matrix[:, i] == 1)
-    vector[idx] = i
+def mask_generator(x, p_m):
+    """Generate a mask for the input data."""
+    n, d = x.shape
+    mask = np.random.choice([0, 1], size=(n, d), p=[p_m, 1 - p_m])
+    return mask
+
+def pretext_generator(x, mask):
+    """Generate pretext task data."""
+    n, d = x.shape
+    noise = np.random.normal(0, 1, (n, d))
+    x_tilde = x * mask + noise * (1 - mask)
+    return x_tilde
+
+def perf_metric(metric, y_true, y_pred):
+    """Calculate performance metric."""
+    if metric == 'acc':
+        return accuracy_score(y_true, y_pred)
+    elif metric == 'precision':
+        return precision_score(y_true, y_pred, average='weighted')
+    elif metric == 'recall':
+        return recall_score(y_true, y_pred, average='weighted')
+    elif metric == 'f1':
+        return f1_score(y_true, y_pred, average='weighted')
+    else:
+        raise ValueError(f"Unknown metric: {metric}")
+
+def save_confusion_matrix(y_true, y_pred, output_dir, model_name):
+    """Save confusion matrix as CSV and PNG with proper lithology labels.
     
-  return vector
-
-#%% 
-def convert_vector_to_matrix(vector):
-  """Convert a one-dimensional vector into a two-dimensional matrix
-
-  Args:
-    - vector: A one-dimensional vector
-
-  Returns:
-    - matrix: A two-dimensional matrix
-  """
-  # Parameters
-  no = len(vector)
-  dim = len(np.unique(vector))
-  # Define output
-  matrix = np.zeros([no,dim])
-  
-  # Convert vector to matrix
-  for i in range(dim):
-    idx = np.where(vector == i)
-    matrix[idx, i] = 1
+    Args:
+        y_true: Ground truth labels
+        y_pred: Predicted labels
+        output_dir: Directory to save outputs
+        model_name: Name of the model (used in filename)
+    """
+    os.makedirs(output_dir, exist_ok=True)
     
-  return matrix
-
-def save_confusion_matrix(y_true, y_pred, output_dir, labels=None, normalize='true'):
-  """Compute and save confusion matrix as CSV and PNG.
-
-  Args:
-    - y_true: array-like of true labels
-    - y_pred: array-like of predicted labels
-    - output_dir: directory to save outputs
-    - labels: list of label names or ids (optional)
-    - normalize: None, 'true', 'pred', or 'all' (sklearn normalization)
-  """
-  os.makedirs(output_dir, exist_ok=True)
-  if labels is None:
-    labels = np.unique(np.concatenate([np.asarray(y_true), np.asarray(y_pred)]))
-  
-  # Define lithology names based on actual rock types
-  lithology_names = {
-    0: "Silty Mudstone",          # SS
-    1: "Heterogeneous Sandstone", # HS
-    2: "Dark Mudstone",           # DS
-    3: "Homogeneous Sandstone",   # HgS
-    4: "Black Shale",             # BS
-    5: "Tuff"                     # Tuff
-  }
-  
-  label_names = [lithology_names[label] for label in labels]
-
-  cm = confusion_matrix(y_true, y_pred, labels=labels, normalize=normalize)
-
-  # Save CSV with lithology names
-  csv_path = os.path.join(output_dir, 'confusion_matrix.csv')
-  np.savetxt(csv_path, cm, delimiter=',', fmt='%.4f', 
-             header=','.join(label_names), comments='')
-
-  # Save PNG
-  fig, ax = plt.subplots(figsize=(10, 8))
-  im = ax.imshow(cm, cmap='Blues')
-  ax.set_xlabel('Predicted Lithology')
-  ax.set_ylabel('True Lithology')
-  ax.set_xticks(range(len(labels)))
-  ax.set_yticks(range(len(labels)))
-  ax.set_xticklabels(label_names, rotation=45, ha='right')
-  ax.set_yticklabels(label_names)
-  plt.setp(ax.get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
-  for i in range(cm.shape[0]):
-    for j in range(cm.shape[1]):
-      ax.text(j, i, f'{cm[i, j]:.2f}', ha='center', va='center', color='black', fontsize=8)
-  fig.colorbar(im, ax=ax)
-  fig.tight_layout()
-  png_path = os.path.join(output_dir, 'confusion_matrix.png')
-  fig.savefig(png_path, dpi=200, bbox_inches='tight')
-  plt.close(fig)
-
-  return cm
+    # Define lithology names
+    lithology_names = {
+        0: "Silty Mudstone",          # SS
+        1: "Heterogeneous Sandstone", # HS
+        2: "Dark Mudstone",           # DS
+        3: "Homogeneous Sandstone",   # HgS
+        4: "Black Shale",             # BS
+        5: "Tuff"                     # Tuff
+    }
+    
+    labels = sorted(list(np.unique(np.concatenate([np.asarray(y_true), np.asarray(y_pred)]))))
+    label_names = [lithology_names[label] for label in labels]
+    
+    # Compute confusion matrix (raw counts)
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    
+    # Save raw counts to CSV
+    csv_path = os.path.join(output_dir, f'confusion_matrix_{model_name}.csv')
+    
+    # Save with header and row names for better readability
+    with open(csv_path, 'w') as f:
+        # Write header
+        f.write('True Label,' + ','.join(label_names) + '\n')
+        # Write rows with actual counts
+        for i, row in enumerate(cm):
+            f.write(f'{label_names[i]},' + ','.join(map(str, row)) + '\n')
+    
+    # Save raw counts to Excel-friendly CSV
+    excel_path = os.path.join(output_dir, f'confusion_matrix_{model_name}_excel.csv')
+    np.savetxt(excel_path, cm, delimiter=',', fmt='%d')
+    
+    # Create figure with larger size and higher DPI
+    plt.figure(figsize=(12, 10), dpi=300)
+    
+    # Create heatmap with scientific color scheme
+    im = plt.imshow(cm, cmap='YlOrRd')  # Using YlOrRd colormap for better scientific presentation
+    
+    # Add title
+    plt.title(f'Confusion Matrix - {model_name}', pad=20, fontsize=14)
+    
+    # Add axis labels
+    plt.xlabel('Predicted Label', fontsize=12, labelpad=10)
+    plt.ylabel('True Label', fontsize=12, labelpad=10)
+    
+    # Add ticks
+    plt.xticks(range(len(labels)), label_names, rotation=45, ha='right', fontsize=10)
+    plt.yticks(range(len(labels)), label_names, fontsize=10)
+    
+    # Add colorbar
+    cbar = plt.colorbar(im)
+    cbar.set_label('Number of Samples',
+                   rotation=270, labelpad=25, fontsize=10)
+    
+    # Add text annotations with actual counts
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            text_color = 'white' if cm[i, j] > cm.max() / 2 else 'black'
+            plt.text(j, i, str(cm[i, j]),
+                    ha="center", va="center", color=text_color,
+                    fontsize=10, fontweight='bold')
+    
+    # Adjust layout and save
+    plt.tight_layout()
+    png_path = os.path.join(output_dir, f'confusion_matrix_{model_name}.png')
+    plt.savefig(png_path, bbox_inches='tight', dpi=300)
+    plt.close()
+    
+    return cm

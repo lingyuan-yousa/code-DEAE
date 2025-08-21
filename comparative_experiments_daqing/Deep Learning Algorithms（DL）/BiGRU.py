@@ -130,7 +130,7 @@ def main():
         # Save confusion matrix
         output_dir = os.path.join(os.path.dirname(__file__), 'results')
         os.makedirs(output_dir, exist_ok=True)
-        save_confusion_matrix(y_true, y_pred, output_dir, 'bigru', normalize='true')
+        save_confusion_matrix(y_true, y_pred, output_dir, 'bigru')
 
 if __name__ == '__main__':
     main()

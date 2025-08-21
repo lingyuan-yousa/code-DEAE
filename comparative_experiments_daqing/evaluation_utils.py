@@ -10,7 +10,7 @@ from sklearn.metrics import (
     f1_score
 )
 
-def save_confusion_matrix(y_true, y_pred, output_dir, model_name, normalize=None):
+def save_confusion_matrix(y_true, y_pred, output_dir, model_name):
     """Save confusion matrix as CSV and PNG with proper lithology labels.
     
     Args:
@@ -18,7 +18,6 @@ def save_confusion_matrix(y_true, y_pred, output_dir, model_name, normalize=None
         y_pred: Predicted labels
         output_dir: Directory to save outputs
         model_name: Name of the model (used in filename)
-        normalize: None for counts, 'true' for row normalization
     """
     os.makedirs(output_dir, exist_ok=True)
     
@@ -35,11 +34,8 @@ def save_confusion_matrix(y_true, y_pred, output_dir, model_name, normalize=None
     labels = sorted(list(np.unique(np.concatenate([np.asarray(y_true), np.asarray(y_pred)]))))
     label_names = [lithology_names[label] for label in labels]
     
-    # Compute confusion matrix
-    cm = confusion_matrix(y_true, y_pred, labels=labels, normalize=normalize)
-    
-    if normalize is None:
-        cm = cm.astype(int)
+    # Compute confusion matrix (raw counts)
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
     
     # Save raw counts to CSV
     csv_path = os.path.join(output_dir, f'confusion_matrix_{model_name}.csv')
@@ -48,9 +44,13 @@ def save_confusion_matrix(y_true, y_pred, output_dir, model_name, normalize=None
     with open(csv_path, 'w') as f:
         # Write header
         f.write('True Label,' + ','.join(label_names) + '\n')
-        # Write rows
+        # Write rows with actual counts
         for i, row in enumerate(cm):
             f.write(f'{label_names[i]},' + ','.join(map(str, row)) + '\n')
+    
+    # Save raw counts to Excel-friendly CSV
+    excel_path = os.path.join(output_dir, f'confusion_matrix_{model_name}_excel.csv')
+    np.savetxt(excel_path, cm, delimiter=',', fmt='%d')
     
     # Create figure with larger size and higher DPI
     plt.figure(figsize=(12, 10), dpi=300)
@@ -71,15 +71,14 @@ def save_confusion_matrix(y_true, y_pred, output_dir, model_name, normalize=None
     
     # Add colorbar
     cbar = plt.colorbar(im)
-    cbar.set_label('Number of Samples' if normalize is None else 'Normalized Confusion Matrix',
+    cbar.set_label('Number of Samples',
                    rotation=270, labelpad=25, fontsize=10)
     
-    # Add text annotations
-    thresh = cm.max() / 2.
+    # Add text annotations with actual counts
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            text_color = 'white' if cm[i, j] > thresh else 'black'
-            plt.text(j, i, format(cm[i, j], 'd' if normalize is None else '.2f'),
+            text_color = 'white' if cm[i, j] > cm.max() / 2 else 'black'
+            plt.text(j, i, str(cm[i, j]),
                     ha="center", va="center", color=text_color,
                     fontsize=10, fontweight='bold')
     

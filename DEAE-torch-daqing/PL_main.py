@@ -72,9 +72,6 @@ with torch.no_grad():
 train_mlp_pytorch(x_train_hat, y_train, model, mlp_parameters)
 y_test_hat = predict_mlp_pytorch(x_test_hat, model)
 
-# train_mlp_pytorch(x_train, y_train, model, mlp_parameters)
-# y_test_hat = predict_mlp_pytorch(x_test, model)
-
 results[0] = perf_metric(metric, y_test, y_test_hat)
 
 print('DADE-Self Performance: ' + str(results[0]))
@@ -85,9 +82,6 @@ dade_semi_parameters['hidden_dim'] = 128
 dade_semi_parameters['batch_size'] = 128
 dade_semi_parameters['iterations'] = 78
 dade_semi_parameters['lr'] = 0.0035
-
-# for seed in range(20, 50):
-#     print('seed ' + str(seed))
 
 set_seed(14)
 y_test_hat = train_model(encoder, x_train, y_train, x_unlab, x_test, y_test,
@@ -111,10 +105,4 @@ report = classification_report(y_test, y_test_hat)
 print(report)
 
 # Save confusion matrix outputs
-save_confusion_matrix(
-    y_true=y_test,
-    y_pred=y_test_hat,
-    output_dir='./save_model',
-    labels=sorted(list(np.unique(np.concatenate([y_test, y_test_hat])))),
-    normalize='true'
-)
+save_confusion_matrix(y_test, y_test_hat, './save_model', 'deae')
